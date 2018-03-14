@@ -1,0 +1,6 @@
+{
+	"username": "lights",
+	"password": "hunter2",
+	"session": "leave username and password blank if you want to use this option",
+	"export": "leave blank to use default, else specify **FILE**, not DIR of export csv"
+}
