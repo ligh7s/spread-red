@@ -19,12 +19,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Download a spreadsheet of metadata from a Gazelle tracker, utilizing a directory of torrents
-obtained via collector feature (better solution to come if API improves).
+"""Download a spreadsheet of metadata from a Gazelle tracker,
+utilizing a directory of torrents obtained via collector feature
+(better solution to come if API improves).
 """
 
 # TODO: Force update specific torrent ids or all
-# TODO: Force a dev to write a snatched/uploaded API page, should be easy shit...
+# TODO: Force a dev to write a snatched/uploaded API page, should be easy
 
 import re
 import os
@@ -33,10 +34,10 @@ import json
 import time
 import html
 import csv
-import argparse
 import sqlite3
 
 from red import API, RequestException, LoginException
+
 
 def main(args):
     """Download the metashit."""
@@ -52,7 +53,8 @@ def main(args):
     try:
         red = API(config['username'], config['password'], config['session'])
     except LoginException as l_e:
-        print('Failed to log in to RED. Please double check your credentials. {}'.format(l_e))
+        print(
+            'Failed to log in to RED. Please double check your credentials. {}'.format(l_e))
         exit()
 
     create_db()
@@ -72,7 +74,11 @@ def main(args):
 
     for filename, torrentid in torrentids.items():
         # Check to see if torrent has already been indexed
-        conn = sqlite3.connect(os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
+        conn = sqlite3.connect(
+            os.path.join(
+                sys.path[0],
+                'output',
+                'SpreadRED.db'))
         cursor = conn.cursor()
         cursor.execute("""SELECT TorrentID FROM Torrents WHERE TorrentID = ?
                        UNION SELECT TorrentID FROM NonMusic WHERE TorrentID = ?""",
@@ -112,17 +118,31 @@ def insert_db(info):
     g['name'] = html.unescape(g['name'])
 
     if t['remastered']:
-        ed_year, ed_title, label, catno = (t['remasterYear'], t['remasterTitle'],
-                                           t['remasterRecordLabel'], t['remasterCatalogueNumber'])
+        ed_year, ed_title, label, catno = (
+            t['remasterYear'], t['remasterTitle'], t['remasterRecordLabel'], t['remasterCatalogueNumber'])
     else:
-        ed_year, ed_title, label, catno = (False, 'Original Release', g['recordLabel'], g['catalogueNumber'])
+        ed_year, ed_title, label, catno = (
+            False, 'Original Release', g['recordLabel'], g['catalogueNumber'])
 
     conn = sqlite3.connect(os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO Torrents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                   (t['id'], g['name'], g['year'], ed_year, ed_title, label,
-                    catno, t['size'], t['media'], t['format'], t['encoding'],
-                    t['logScore'], t['hasCue'], t['infoHash']))
+    cursor.execute(
+        'INSERT INTO Torrents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (t['id'],
+         g['name'],
+            g['year'],
+            ed_year,
+            ed_title,
+            label,
+            catno,
+            t['size'],
+            t['media'],
+            t['format'],
+            t['encoding'],
+            t['logScore'],
+            t['hasCue'],
+            t['infoHash'],
+            t['description']))
 
     for type_, alist in g['musicInfo'].items():
         for artist in alist:
@@ -138,17 +158,19 @@ def insert_db(info):
     conn.commit()
     conn.close()
 
-    log('Inserted Torrent ID {}: {} - {} ({}) [{}]'.format(t['id'], ', '.join(artistlist),
-                                                            g['name'], g['year'], t['format']))
+    log('Inserted Torrent ID {}: {} - {} ({}) [{}]'.format(
+        t['id'], ', '.join(artistlist), g['name'], g['year'], t['format']))
 
 
 def insert_non_music_db(info):
     """Insert a non-music torrent ID into non-music DB."""
     conn = sqlite3.connect(os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO NonMusic (TorrentID) VALUES (?)', (info['torrent']['id'],))
+    cursor.execute('INSERT INTO NonMusic (TorrentID) VALUES (?)',
+                   (info['torrent']['id'],))
     conn.commit()
     conn.close()
+
 
 def export(exportdir):
     """Export the database to a CSV file."""
@@ -158,26 +180,45 @@ def export(exportdir):
     with open(exportdir, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='"')
 
-        writer.writerow(['TorrentID', 'Artist(s)', 'Name', 'OriginalYear', 'EditionYear',
-                         'EditionTitle', 'Label', 'CatalogNumber', 'Size', 'Source', 'Format',
-                         'Encoding', 'Log', 'Cue', 'Tags', 'Infohash'])
+        writer.writerow(['TorrentID',
+                         'Artist(s)',
+                         'Name',
+                         'OriginalYear',
+                         'EditionYear',
+                         'EditionTitle',
+                         'Label',
+                         'CatalogNumber',
+                         'Size',
+                         'Source',
+                         'Format',
+                         'Encoding',
+                         'Log',
+                         'Cue',
+                         'Tags',
+                         'Infohash'])
 
-        conn = sqlite3.connect(os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
+        conn = sqlite3.connect(
+            os.path.join(
+                sys.path[0],
+                'output',
+                'SpreadRED.db'))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
             SELECT
                 TorrentID, Name, OriginalYear, EditionYear, EditionTitle, Label,
-                CatalogNumber, Size, Source, Format, Encoding, Log, Cue, Infohash
+                CatalogNumber, Size, Source, Format, Encoding, Log, Cue, Infohash, Description
             FROM Torrents
         """)
         torrents = cursor.fetchall()
         for t in torrents:
-            cursor.execute('SELECT Name, Type FROM Artists WHERE TorrentID = ? AND '
-                           '(Type = "artists" OR Type = "with")', (t['TorrentID'],))
+            cursor.execute(
+                'SELECT Name, Type FROM Artists WHERE TorrentID = ? AND '
+                '(Type = "artists" OR Type = "with")', (t['TorrentID'],))
             artists = cursor.fetchall()
-            cursor.execute('SELECT GROUP_CONCAT(DISTINCT Name) AS Tag FROM Tags '
-                           'WHERE TorrentID = ?', (t['TorrentID'],))
+            cursor.execute(
+                'SELECT GROUP_CONCAT(DISTINCT Name) AS Tag FROM Tags '
+                'WHERE TorrentID = ?', (t['TorrentID'],))
             t_row = cursor.fetchone()
             tags = t_row['Tag'] if t_row else ''
 
@@ -197,10 +238,23 @@ def export(exportdir):
             label = t['Label']
             catalog_number = t['CatalogNumber']
 
-            writer.writerow([t['TorrentID'], artists, t['Name'], t['OriginalYear'],
-                             t['EditionYear'], edition_title, label, catalog_number,
-                             t['Size'], t['Source'], t['Format'], t['Encoding'],
-                             t['Log'], t['Cue'], tags, t['Infohash']])
+            writer.writerow([t['TorrentID'],
+                             artists,
+                             t['Name'],
+                             t['OriginalYear'],
+                             t['EditionYear'],
+                             edition_title,
+                             label,
+                             catalog_number,
+                             t['Size'],
+                             t['Source'],
+                             t['Format'],
+                             t['Encoding'],
+                             t['Log'],
+                             t['Cue'],
+                             tags,
+                             t['Infohash'],
+                             t['Description']])
 
         log('Exported DB to CSV')
 
@@ -220,7 +274,8 @@ def settings(args):
     for key, value in settings_.items():
         if not value:
             if key == 'export':
-                settings_[key] = os.path.join(sys.path[0], 'output', 'SpreadRED.csv')
+                settings_[key] = os.path.join(
+                    sys.path[0], 'output', 'SpreadRED.csv')
             else:
                 settings_[key] = config[key]
 
@@ -231,7 +286,8 @@ def settings(args):
         print('{} does not exist, exiting...'.format(path))
         exit()
 
-    if (not settings_['username'] or not settings_['password']) and not settings_['session']:
+    if (not settings_['username'] or not settings_[
+            'password']) and not settings_['session']:
         print('Invalid login credentials.')
         exit()
 
@@ -265,7 +321,8 @@ def create_db():
             Encoding TEXT NOT NULL,
             Log TEXT,
             Cue BOOLEAN,
-            Infohash TEXT NOT NULL
+            Infohash TEXT NOT NULL,
+            Description TEXT
         )
     """)
 
@@ -295,27 +352,9 @@ def create_db():
     conn.commit()
     conn.close()
 
+
 def log(line):
     """Log a line to the log file and print it."""
     with open(os.path.join(sys.path[0], 'output', 'SpreadRED.log'), 'a') as logfile:
         logfile.write(time.strftime('%Y-%m-%d %H:%M:%S') + ': ' + line + '\n')
     print(line)
-
-
-def parse_args():
-    """Argument parser."""
-    description = 'SpreadRED: Tool to create a database of metadata from seeding/snatched ' \
-        'lists, using the Gazelle API and a folder of downloaded .torrents. By default, ' \
-        'it will export a CSV file with the information.'
-
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('directory', help='Directory of .torrent files', nargs='?')
-    parser.add_argument('-u', '--username', help='Username of Gazelle site', nargs=1)
-    parser.add_argument('-p', '--password', help='Password to Gazelle site', nargs=1)
-    parser.add_argument('-s', '--session', help='Session to Gazelle site', nargs=1)
-    parser.add_argument('-e', '--export', help='Only export CSV of data, do not index torrents.', action="store_true")
-
-    return parser.parse_args()
-
-if __name__ == '__main__':
-    main(parse_args())
