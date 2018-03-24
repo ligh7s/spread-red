@@ -195,7 +195,8 @@ def export(exportdir):
                          'Log',
                          'Cue',
                          'Tags',
-                         'Infohash'])
+                         'Infohash',
+                         'Description'])
 
         conn = sqlite3.connect(
             os.path.join(
