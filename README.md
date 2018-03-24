@@ -27,7 +27,22 @@ will export a CSV file with the information.
 
 ## 2FA
 
-You cannot log in normally with a username and password if 2FA is enabled. Therefore, you must copy a session cookie from an already-logged in session (typically your browser RED session), and use that in your config. If you are using the session cookie, leave the ```username``` and ```password``` values blank.
+You cannot log in normally with a username and password if 2FA is enabled. Therefore, you must copy
+a session cookie from an already-logged in session (typically your browser RED session), and use
+that in your config. If you are using the session cookie, leave the ```username``` and
+```password``` values blank.
+
+## Versions
+
+### 1.1
+
+Added torrent description to database. To update from v1.0, run the `release-1.1.py` script in
+`migrations/`, supplying the path of your database file (default: `output/SpreadRED.db`)
+as an argument.
+
+### 1.0
+
+Initial release, most of what's described in the README was added here.
 
 ## Usage
 
