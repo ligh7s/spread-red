@@ -34,6 +34,12 @@ that in your config. If you are using the session cookie, leave the ```username`
 
 ## Versions
 
+### 1.2
+
+Added --force-overwrite flag, usable to re-index every torrent the script comes across.  
+Also added an except for unicode log/print errors, so the script doesn't crash when it
+fails to write a strange character.
+
 ### 1.1
 
 Added torrent description to database. To update from v1.0, run the `release-1.1.py` script in
@@ -64,4 +70,5 @@ Initial release, most of what's described in the README was added here.
                 Password to Gazelle site
       -s SESSION, --session SESSION
                 Session to Gazelle site
+      -f, --force-update    Force update all torrents in the specified folder.
       -e, --export          Only export CSV of data, do not index torrents.
