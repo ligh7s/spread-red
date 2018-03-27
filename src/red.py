@@ -21,13 +21,16 @@
 import time
 import requests
 
+
 class RequestException(Exception):
     """Error on HTTP request."""
     pass
 
+
 class LoginException(Exception):
     """Error with logging in."""
     pass
+
 
 class API:
     """Wrapper for the RED API. Make requests and scrape and stuff."""
@@ -74,9 +77,12 @@ class API:
             self.session.cookies['session'] = self.cookie
 
     def logout(self):
-        """Log out from Redacted, only if used regular login credential method."""
+        """Log out from Redacted, only if user used the regular
+        login credential method.
+        """
         if self.username and self.password:
-            self.session.get(self.base_url + '/logout.php?auth={}'.format(self.authkey))
+            self.session.get(self.base_url + '/logout.php?auth={}'
+                             .format(self.authkey))
 
     def request(self, action, **kwargs):
         """Make a request to the Gazelle API."""
@@ -86,7 +92,8 @@ class API:
         url = self.base_url + 'ajax.php'
         params = {'action': action}
         params.update(kwargs)
-        resp = self.session.get(url, params=params, allow_redirects=False).json()
+        resp = self.session.get(
+            url, params=params, allow_redirects=False).json()
         self.last = time.time()
         if resp['status'] != 'success':
             raise RequestException
@@ -96,4 +103,3 @@ class API:
         """Get the response JSON for a torrent."""
         data = {'id': torrentid}
         return self.request('torrent', **data)
-

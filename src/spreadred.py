@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # -*- coding: utf-8 -*-
 
 # SpreadRED - Create a database of torrent metadata from a Gazelle site
@@ -36,7 +34,7 @@ import html
 import csv
 import sqlite3
 
-from red import API, RequestException, LoginException
+from src.red import API, RequestException, LoginException
 
 
 def main(args):
@@ -53,8 +51,8 @@ def main(args):
     try:
         red = API(config['username'], config['password'], config['session'])
     except LoginException as l_e:
-        print(
-            'Failed to log in to RED. Please double check your credentials. {}'.format(l_e))
+        print('Failed to log in to RED. '
+              'Please double check your credentials. {}'.format(l_e))
         exit()
 
     create_db()
@@ -74,16 +72,14 @@ def main(args):
 
     for filename, torrentid in torrentids.items():
         # Check to see if torrent has already been indexed
-        conn = sqlite3.connect(
-            os.path.join(
-                sys.path[0],
-                'output',
-                'SpreadRED.db'))
+        db_path = os.path.join(sys.path[0], 'output', 'SpreadRED.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("""SELECT TorrentID FROM Torrents WHERE TorrentID = ?
-                       UNION SELECT TorrentID FROM NonMusic WHERE TorrentID = ?""",
+                       UNION
+                       SELECT TorrentID FROM NonMusic WHERE TorrentID = ?""",
                        (torrentid, torrentid))
-        if cursor.fetchone():
+        if cursor.fetchone() and not args.force_update:
             continue
 
         try:
@@ -98,18 +94,18 @@ def main(args):
                 'Filename: {}'.format(torrentid, filename))
             continue
         if info['group']['categoryId'] != 1:
-            insert_non_music_db(info)
+            insert_non_music_db(info, args.force_update)
             log('Torrent ID {} (Filename: "{}") is not a music torrent, '
                 'skipping...'.format(torrentid, filename))
             continue
 
-        insert_db(info)
+        insert_db(info, args.force_update)
 
     log('Finished cataloguing releases.')
     export(config['export'])
 
 
-def insert_db(info):
+def insert_db(info, overwrite=False):
     """Insert information into the DB."""
     t = info['torrent']
     g = info['group']
@@ -118,34 +114,28 @@ def insert_db(info):
     g['name'] = html.unescape(g['name'])
 
     if t['remastered']:
-        ed_year, ed_title, label, catno = (
-            t['remasterYear'], t['remasterTitle'], t['remasterRecordLabel'], t['remasterCatalogueNumber'])
+        ed_year, ed_title = t['remasterYear'], t['remasterTitle']
+        label, catno = t['remasterRecordLabel'], t['remasterCatalogueNumber']
     else:
-        ed_year, ed_title, label, catno = (
-            False, 'Original Release', g['recordLabel'], g['catalogueNumber'])
+        ed_year, ed_title = False, 'Original Release'
+        label, catno = g['recordLabel'], g['catalogueNumber']
 
     conn = sqlite3.connect(os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
     cursor = conn.cursor()
+    if overwrite:
+        cursor.execute('DELETE FROM Torrents WHERE TorrentID = ?', (t['id'],))
     cursor.execute(
-        'INSERT INTO Torrents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (t['id'],
-         g['name'],
-            g['year'],
-            ed_year,
-            ed_title,
-            label,
-            catno,
-            t['size'],
-            t['media'],
-            t['format'],
-            t['encoding'],
-            t['logScore'],
-            t['hasCue'],
-            t['infoHash'],
-            t['description']))
+        'INSERT INTO Torrents VALUES '
+        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (t['id'], g['name'], g['year'], ed_year, ed_title, label, catno,
+         t['size'], t['media'], t['format'], t['encoding'], t['logScore'],
+         t['hasCue'], t['infoHash'], t['description']))
 
     for type_, alist in g['musicInfo'].items():
         for artist in alist:
+            if overwrite:
+                cursor.execute('DELETE FROM Artists WHERE TorrentID = ?',
+                               (t['id'],))
             artist['name'] = html.unescape(artist['name'])
             cursor.execute('INSERT INTO ARTISTS VALUES (?, ?, ?, ?)',
                            (t['id'], artist['id'], type_, artist['name']))
@@ -153,6 +143,8 @@ def insert_db(info):
                 artistlist.append(artist['name'])
 
     for tag in g['tags']:
+        if overwrite:
+            cursor.execute('DELETE FROM Tags WHERE TorrentID = ?', (t['id'],))
         cursor.execute('INSERT INTO Tags VALUES (?, ?)', (t['id'], tag))
 
     conn.commit()
@@ -162,10 +154,13 @@ def insert_db(info):
         t['id'], ', '.join(artistlist), g['name'], g['year'], t['format']))
 
 
-def insert_non_music_db(info):
+def insert_non_music_db(info, overwrite):
     """Insert a non-music torrent ID into non-music DB."""
     conn = sqlite3.connect(os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
     cursor = conn.cursor()
+    if overwrite:
+        cursor.execute('DELETE FROM NonMusic WHERE TorrentID = ?',
+                       (info['torrent']['id'],))
     cursor.execute('INSERT INTO NonMusic (TorrentID) VALUES (?)',
                    (info['torrent']['id'],))
     conn.commit()
@@ -180,35 +175,21 @@ def export(exportdir):
     with open(exportdir, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='"')
 
-        writer.writerow(['TorrentID',
-                         'Artist(s)',
-                         'Name',
-                         'OriginalYear',
-                         'EditionYear',
-                         'EditionTitle',
-                         'Label',
-                         'CatalogNumber',
-                         'Size',
-                         'Source',
-                         'Format',
-                         'Encoding',
-                         'Log',
-                         'Cue',
-                         'Tags',
-                         'Infohash',
+        writer.writerow(['TorrentID', 'Artist(s)', 'Name', 'OriginalYear',
+                         'EditionYear', 'EditionTitle', 'Label',
+                         'CatalogNumber', 'Size', 'Source', 'Format',
+                         'Encoding', 'Log', 'Cue', 'Tags', 'Infohash',
                          'Description'])
 
         conn = sqlite3.connect(
-            os.path.join(
-                sys.path[0],
-                'output',
-                'SpreadRED.db'))
+            os.path.join(sys.path[0], 'output', 'SpreadRED.db'))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
             SELECT
-                TorrentID, Name, OriginalYear, EditionYear, EditionTitle, Label,
-                CatalogNumber, Size, Source, Format, Encoding, Log, Cue, Infohash, Description
+                TorrentID, Name, OriginalYear, EditionYear, EditionTitle,
+                Label, CatalogNumber, Size, Source, Format, Encoding,
+                Log, Cue, Infohash, Description
             FROM Torrents
         """)
         torrents = cursor.fetchall()
@@ -239,23 +220,11 @@ def export(exportdir):
             label = t['Label']
             catalog_number = t['CatalogNumber']
 
-            writer.writerow([t['TorrentID'],
-                             artists,
-                             t['Name'],
-                             t['OriginalYear'],
-                             t['EditionYear'],
-                             edition_title,
-                             label,
-                             catalog_number,
-                             t['Size'],
-                             t['Source'],
-                             t['Format'],
-                             t['Encoding'],
-                             t['Log'],
-                             t['Cue'],
-                             tags,
-                             t['Infohash'],
-                             t['Description']])
+            writer.writerow(
+                [t['TorrentID'], artists, t['Name'], t['OriginalYear'],
+                 t['EditionYear'], edition_title, label, catalog_number,
+                 t['Size'], t['Source'], t['Format'], t['Encoding'], t['Log'],
+                 t['Cue'], tags, t['Infohash'], t['Description']])
 
         log('Exported DB to CSV')
 
@@ -356,6 +325,15 @@ def create_db():
 
 def log(line):
     """Log a line to the log file and print it."""
-    with open(os.path.join(sys.path[0], 'output', 'SpreadRED.log'), 'a') as logfile:
-        logfile.write(time.strftime('%Y-%m-%d %H:%M:%S') + ': ' + line + '\n')
+    log_path = os.path.join(sys.path[0], 'output', 'SpreadRED.log')
+    with open(log_path, 'a') as logfile:
+        try:
+            logfile.write('{}: {}\n'
+                          .format(time.strftime('%Y-%m-%d %H:%M:%S'), line))
+        except UnicodeEncodeError:
+            logfile.write('{}: Failed to encode log line (usually due to '
+                          'special characters).\n'
+                          .format(time.strftime('%Y-%m-%d %H:%M:%S')))
+            line = 'Failed to encode line (usually due to special characters).'
+
     print(line)
