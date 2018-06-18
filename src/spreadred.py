@@ -231,7 +231,9 @@ def export(exportdir):
 
 def settings(args):
     """Get settings from config or arguments."""
-    with open(os.path.join(sys.path[0], 'config.json'), 'r') as conf_file:
+    path = os.path.join(
+        os.path.dirname(os.path.dirname((__file__))), 'config.json')
+    with open(path, 'r') as conf_file:
         config = json.load(conf_file)
 
     settings_ = {
@@ -265,8 +267,8 @@ def settings(args):
         print('A directory for .torrent files must be specified')
         exit()
 
-    if not os.path.exists(args.directory[0]):
-        print('Error: {} does not exist!'.format(args.directory[0]))
+    if not os.path.exists(args.directory):
+        print('Error: {} does not exist!'.format(args.directory))
         exit()
 
     return settings_
