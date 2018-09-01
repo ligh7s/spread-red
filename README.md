@@ -15,7 +15,7 @@ will export a CSV file with the information.
 * Export: Export directory for the csv _(optional)_
 
 ## How-To
-* Download script ```git clone https://gitlab.com/goesrawr/spread-red```
+* Download script ```git clone https://github.com/ligh7s/spread-red```
 * Enter directory of script ```cd spread-red```
 * Install requirements ```pip3 install --user -r requirements.txt```
 * Rename ```config.json.txt``` to ```config.json```
